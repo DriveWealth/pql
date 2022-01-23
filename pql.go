@@ -95,7 +95,7 @@ func init() {
 			fmt.Printf("ERROR: Failed to load credentials for profile [%s]: %s\n", profile, err.Error())
 			os.Exit(-10)
 		}
-		fmt.Printf("Loaded Profile: source=%s\n", pcfg[0])
+		//fmt.Printf("Loaded Profile: source=%s\n", pcfg[0])
 		dbAwsKeyId = pcfg[1]
 		dbAwsSecretKey = pcfg[2]
 		dbAwsRegion = pcfg[3]
