@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	VERSION        = "0.1a"
+	VERSION        = "0.1b"
 	MAX_BATCH_SIZE = 25
 	AWS_KEY_ENV    = "AWS_ACCESS_KEY_ID"
 	AWS_SECRET_ENV = "AWS_SECRET_ACCESS_KEY"
