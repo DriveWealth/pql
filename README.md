@@ -57,5 +57,46 @@ UPDATE "bo.accounts" SET accountMgmtType = 3 WHERE userID = '9ed1ba94-45ab-47c6-
 * Any pql input file should be limited to only one type of operation (**UPDATE**, **INSERT** or **DELETE**), but will support operations against multiple tables.
 * Tables containing a dot (.) need to be wrapped in double quotes (as seen in the Example PQL File above)
 
+# pqlquery
+pqlquery is a command line utility for executing PartiQL queries against DynamoDB. Results are returned as one line of JSON per row returned.
+
+### Usage
+```
+pqlquery: v0.1a
+Usage of pqlquery:
+  -consistent
+    	Specify for consistent reads
+  -maxretries int
+    	The maximum number of retries for a capacity failure (-1 for infinite) (default -1)
+  -profile string
+    	The optional AWS shared config credential profile name
+  -query string
+    	The PartiSQL statement to execute
+```
+
+#### Examples
+
+##### Query
+```
+pqlquery -profile UAT -query "select jobStart, jobName, jobSpecificData, itemCount, successCount from \"sys.jobStatus\" where subSystem = 'INTELICLEAR' and createdWhen > '2019-' and jobName = 'MOD_FINTRN' and itemCount > 0 ORDER BY createdWhen desc"
+```
+
+##### Output
+
+```
+➜  queries pqlquery -profile UAT -query "select jobStart, jobName, jobSpecificData, itemCount, successCount from \"sys.jobStatus\" where subSystem = 'INTELICLEAR' and createdWhen > '2019-' and jobName = 'MOD_FINTRN' and itemCount > 0 ORDER BY createdWhen desc" | more
+{"itemCount":{"Value":"17722"},"jobName":{"Value":"MOD_FINTRN"},"jobStart":{"Value":"2022-01-21T18:32:46.972Z"},"successCount":{"Value":"770"}}
+{"itemCount":{"Value":"30843"},"jobName":{"Value":"MOD_FINTRN"},"jobStart":{"Value":"2022-01-20T18:32:00.031Z"},"successCount":{"Value":"527"}}
+{"itemCount":{"Value":"1010771"},"jobName":{"Value":"MOD_FINTRN"},"jobStart":{"Value":"2022-01-19T18:32:02.659Z"},"successCount":{"Value":"973"}}
+{"itemCount":{"Value":"894984"},"jobName":{"Value":"MOD_FINTRN"},"jobStart":{"Value":"2022-01-18T18:31:53.042Z"},"successCount":{"Value":"934"}}
+{"itemCount":{"Value":"23835"},"jobName":{"Value":"MOD_FINTRN"},"jobStart":{"Value":"2022-01-14T18:33:12.865Z"},"successCount":{"Value":"1025"}}
+{"itemCount":{"Value":"18800"},"jobName":{"Value":"MOD_FINTRN"},"jobStart":{"Value":"2022-01-13T18:32:00.495Z"},"successCount":{"Value":"1856"}}
+{"itemCount":{"Value":"602872"},"jobName":{"Value":"MOD_FINTRN"},"jobStart":{"Value":"2022-01-12T18:32:41.914Z"},"successCount":{"Value":"818"}}
+<SNIP>
+```
+
+
+
+
 
 
