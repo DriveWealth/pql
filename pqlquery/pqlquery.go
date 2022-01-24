@@ -15,6 +15,7 @@ import (
 	"log"
 	"os"
 	"pql/creds"
+	"pql/ddb"
 	"pql/util"
 	"strings"
 	"sync/atomic"
@@ -22,7 +23,7 @@ import (
 )
 
 const (
-	VERSION        = "0.1b"
+	VERSION        = "0.2a"
 	AWS_KEY_ENV    = "AWS_ACCESS_KEY_ID"
 	AWS_SECRET_ENV = "AWS_SECRET_ACCESS_KEY"
 	AWS_REGION_ENV = "AWS_REGION"
@@ -33,6 +34,7 @@ var (
 	profile    string
 	query      string
 	consistent bool
+	minify     bool
 
 	dbAwsKeyId     string
 	dbAwsSecretKey string
@@ -53,6 +55,7 @@ func init() {
 	flag.StringVar(&profile, "profile", "", "The optional AWS shared config credential profile name")
 	flag.StringVar(&query, "query", "", "The PartiSQL statement to execute")
 	flag.BoolVar(&consistent, "consistent", false, "Specify for consistent reads")
+	flag.BoolVar(&minify, "minify", false, "Specify for minified JSON instead of DynamoDB JSON")
 	flag.IntVar(&maxRetries, "maxretries", -1, "The maximum number of retries for a capacity failure (-1 for infinite)")
 
 	usage := flag.Usage
@@ -147,8 +150,16 @@ func main() {
 			if out.Items != nil {
 				for _, item := range out.Items {
 					atomic.AddInt32(rowsRetrieved, ONE)
-					if b, err := json.Marshal(item); err == nil {
-						fmt.Printf("%s\n", string(b))
+					if minify {
+						minied := ddb.ExtractItem(item)
+						if b, err := json.Marshal(minied); err == nil {
+							fmt.Printf("%s\n", string(b))
+						}
+
+					} else {
+						if b, err := json.Marshal(item); err == nil {
+							fmt.Printf("%s\n", string(b))
+						}
 					}
 				}
 			}
@@ -171,5 +182,4 @@ func main() {
 func stdOutFileName() string {
 	stat, _ := os.Stdout.Stat()
 	return stat.Name()
-
 }
