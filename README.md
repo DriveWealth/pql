@@ -103,7 +103,7 @@ pqlquery -profile UAT -query "select jobStart, jobName, jobSpecificData, itemCou
 
 #### Minified JSON Output
 
-The `-minify` option for pqlquery will a best effort to clean up the JSON output and generate a more standardized document structure.
+The `-minify` option for pqlquery will make a best effort to clean up the JSON output and generate a more standardized document structure.
 
 ##### DynamoDB Default JSON
 
