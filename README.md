@@ -57,6 +57,7 @@ UPDATE "bo.accounts" SET accountMgmtType = 3 WHERE userID = '9ed1ba94-45ab-47c6-
 ### PartiQL/pql Caveats, Provisos and Stipulatons
 
 * PartiQL supports C-R-U-D operations, but pql is only useful for writes, so operations should be limited to **UPDATE**, **INSERT** and **DELETE** operations.
+* For PartiQL **SELECT** queries, see [pqlquery](https://github.com/DriveWealth/pql#pqlquery).
 * Any pql input file should be limited to only one type of operation (**UPDATE**, **INSERT** or **DELETE**), but will support operations against multiple tables.
 * Tables containing a dot (.) need to be wrapped in double quotes (as seen in the Example PQL File above)
 
