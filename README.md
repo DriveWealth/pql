@@ -5,6 +5,9 @@ pql is a command line utility to execute DynamoDB [PartiQL](https://docs.aws.ama
 
 PartiQL is a SQL-compatible query language, to select, insert, update, and delete data in Amazon DynamoDB. 
 
+### Downloads
+Binaries can be downloaded [here](https://github.com/DriveWealth/pql/releases/tag/v0.2a).
+
 ### Usage
 
 ```
@@ -62,12 +65,14 @@ pqlquery is a command line utility for executing PartiQL queries against DynamoD
 
 ### Usage
 ```
-pqlquery: v0.1a
+pqlquery: v0.2a
 Usage of pqlquery:
   -consistent
     	Specify for consistent reads
   -maxretries int
     	The maximum number of retries for a capacity failure (-1 for infinite) (default -1)
+  -minify
+    	Specify for minified JSON instead of DynamoDB JSON      
   -profile string
     	The optional AWS shared config credential profile name
   -query string
@@ -95,8 +100,38 @@ pqlquery -profile UAT -query "select jobStart, jobName, jobSpecificData, itemCou
 <SNIP>
 ```
 
+#### Minified JSON Output
 
+The `-minify` option for pqlquery will a best effort to clean up the JSON output and generate a more standardized document structure.
 
+##### DynamoDB Default JSON
+
+```json
+{
+  "itemCount": {
+    "Value": "14983925"
+  },
+  "jobName": {
+    "Value": "MOD_ACCOUNTS"
+  },
+  "jobStart": {
+    "Value": "2022-01-03T18:33:28.346Z"
+  },
+  "successCount": {
+    "Value": "0"
+  }
+}
+```
+##### Minified JSON
+
+```json
+{
+  "itemCount": 14983925,
+  "jobName": "MOD_ACCOUNTS",
+  "jobStart": "2022-01-03T18:33:28.346Z",
+  "successCount": 0
+}
+```
 
 
 
