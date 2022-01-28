@@ -103,6 +103,39 @@ pqlquery -profile UAT -query "select jobStart, jobName, jobSpecificData, itemCou
 <SNIP>
 ```
 
+#### Minified JSON Output
+
+The `-minify` option for pqlquery will make a best effort to clean up the JSON output and generate a more standardized document structure.
+
+##### DynamoDB Default JSON
+
+```json
+{
+  "itemCount": {
+    "Value": "14983925"
+  },
+  "jobName": {
+    "Value": "MOD_ACCOUNTS"
+  },
+  "jobStart": {
+    "Value": "2022-01-03T18:33:28.346Z"
+  },
+  "successCount": {
+    "Value": "0"
+  }
+}
+```
+##### Minified JSON
+
+```json
+{
+  "itemCount": 14983925,
+  "jobName": "MOD_ACCOUNTS",
+  "jobStart": "2022-01-03T18:33:28.346Z",
+  "successCount": 0
+}
+```
+
 # ddbtruncate
 
 When you have a DynamoDB table you want to truncate (delete all the records), it might be easiest to just drop the table and recreate it. 
@@ -138,40 +171,6 @@ Usage of ddbtruncate:
 2022/01/27 20:02:16 Total Rows: 101602
 2022/01/27 20:02:16 Truncate aod.streamAudit Complete Stats: keys=101602, deleted=101602, resubs=2225, retries=0, getcap=40305, delcap=821852, workers=0
 2022/01/27 20:02:16 Elapsed: 15.01848681s
-```
-
-=======
-#### Minified JSON Output
-
-The `-minify` option for pqlquery will make a best effort to clean up the JSON output and generate a more standardized document structure.
-
-##### DynamoDB Default JSON
-
-```json
-{
-  "itemCount": {
-    "Value": "14983925"
-  },
-  "jobName": {
-    "Value": "MOD_ACCOUNTS"
-  },
-  "jobStart": {
-    "Value": "2022-01-03T18:33:28.346Z"
-  },
-  "successCount": {
-    "Value": "0"
-  }
-}
-```
-##### Minified JSON
-
-```json
-{
-  "itemCount": 14983925,
-  "jobName": "MOD_ACCOUNTS",
-  "jobStart": "2022-01-03T18:33:28.346Z",
-  "successCount": 0
-}
 ```
 
 
