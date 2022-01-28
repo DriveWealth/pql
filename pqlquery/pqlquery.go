@@ -17,13 +17,13 @@ import (
 	"pql/creds"
 	"pql/ddb"
 	"pql/util"
+	"pql/version"
 	"strings"
 	"sync/atomic"
 	"time"
 )
 
 const (
-	VERSION        = "0.2a"
 	AWS_KEY_ENV    = "AWS_ACCESS_KEY_ID"
 	AWS_SECRET_ENV = "AWS_SECRET_ACCESS_KEY"
 	AWS_REGION_ENV = "AWS_REGION"
@@ -35,6 +35,7 @@ var (
 	query      string
 	consistent bool
 	minify     bool
+	nout       bool
 
 	dbAwsKeyId     string
 	dbAwsSecretKey string
@@ -56,11 +57,12 @@ func init() {
 	flag.StringVar(&query, "query", "", "The PartiSQL statement to execute")
 	flag.BoolVar(&consistent, "consistent", false, "Specify for consistent reads")
 	flag.BoolVar(&minify, "minify", false, "Specify for minified JSON instead of DynamoDB JSON")
+	flag.BoolVar(&nout, "nout", false, "Specify to suppress completion message")
 	flag.IntVar(&maxRetries, "maxretries", -1, "The maximum number of retries for a capacity failure (-1 for infinite)")
 
 	usage := flag.Usage
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "pqlquery: v%s\n", VERSION)
+		fmt.Fprintf(os.Stderr, "pqlquery: v%s\n", version.VERSION)
 		usage()
 	}
 	flag.Parse()
@@ -165,12 +167,14 @@ func main() {
 			}
 
 			if out.NextToken == nil {
-				fmt.Fprintf(os.Stderr, "Complete: rows=%d, retries=%d, executions=%d, capacity=%d, elapsed=%s\n",
-					atomic.LoadInt32(rowsRetrieved),
-					retries,
-					loops,
-					atomic.LoadInt64(capUsed),
-					time.Since(startTime).String())
+				if !nout {
+					fmt.Fprintf(os.Stderr, "Complete: rows=%d, retries=%d, executions=%d, capacity=%d, elapsed=%s\n",
+						atomic.LoadInt32(rowsRetrieved),
+						retries,
+						loops,
+						atomic.LoadInt64(capUsed),
+						time.Since(startTime).String())
+				}
 				break
 			} else {
 				nextToken = out.NextToken

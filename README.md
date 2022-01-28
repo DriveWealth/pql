@@ -62,16 +62,20 @@ pqlquery is a command line utility for executing PartiQL queries against DynamoD
 
 ### Usage
 ```
-pqlquery: v0.1a
+pqlquery: v0.3a
 Usage of pqlquery:
   -consistent
-    	Specify for consistent reads
+        Specify for consistent reads
   -maxretries int
-    	The maximum number of retries for a capacity failure (-1 for infinite) (default -1)
+        The maximum number of retries for a capacity failure (-1 for infinite) (default -1)
+  -minify
+        Specify for minified JSON instead of DynamoDB JSON
+  -nout
+        Specify to suppress completion message
   -profile string
-    	The optional AWS shared config credential profile name
+        The optional AWS shared config credential profile name
   -query string
-    	The PartiSQL statement to execute
+        The PartiSQL statement to execute
 ```
 
 #### Examples
@@ -95,7 +99,42 @@ pqlquery -profile UAT -query "select jobStart, jobName, jobSpecificData, itemCou
 <SNIP>
 ```
 
+# ddbtruncate
 
+When you have a DynamoDB table you want to truncate (delete all the records), it might be easiest to just drop the table and recreate it. 
+However, depending on the capacity settings and the table's secondary indexes, it might be quicker to use **ddbtruncate**.
+
+### ddbtruncate Usage
+
+```
+truncate: v0.3a
+Usage of ddbtruncate:
+  -maxretries int
+        The maximum number of retries for a capacity failure (-1 for infinite) (default -1)
+  -profile string
+        The optional AWS shared config credential profile name
+  -readers int
+        The number of reader routines to parallel scan and batch delete with (default 64)
+  -table string
+        The table to truncate
+```
+
+#### Example
+
+```ddbtruncate -profile PER -table aod.streamAudit```
+
+##### Output
+
+```
+2022/01/27 20:02:01 Starting table truncation: table=aod.streamAudit, keys=[eventID]
+2022/01/27 20:02:01 All readers running: 64
+2022/01/27 20:02:06 Truncate aod.streamAudit Running Stats: keys=72863, deleted=62811, resubs=1493, retries=0, getcap=28899, delcap=508082, workers=64
+2022/01/27 20:02:11 Truncate aod.streamAudit Running Stats: keys=99122, deleted=97815, resubs=2200, retries=0, getcap=39322, delcap=791234, workers=11
+2022/01/27 20:02:16 Truncate aod.streamAudit Running Stats: keys=101602, deleted=101589, resubs=2225, retries=0, getcap=40305, delcap=821748, workers=1
+2022/01/27 20:02:16 Total Rows: 101602
+2022/01/27 20:02:16 Truncate aod.streamAudit Complete Stats: keys=101602, deleted=101602, resubs=2225, retries=0, getcap=40305, delcap=821852, workers=0
+2022/01/27 20:02:16 Elapsed: 15.01848681s
+```
 
 
 

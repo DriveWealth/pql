@@ -7,3 +7,7 @@
 /bins/pqlquery
 /bins/pqlquery.exe
 /bins/mapql
+/bins/ddbtruncate
+/bins/ddbtruncate.exe
+/bins/maddbtruncate
+/bins/mddbtruncate

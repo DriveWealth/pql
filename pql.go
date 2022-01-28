@@ -16,6 +16,7 @@ import (
 	"os"
 	"pql/creds"
 	"pql/util"
+	"pql/version"
 	"runtime"
 	"strings"
 	"sync"
@@ -27,7 +28,6 @@ import (
 )
 
 const (
-	VERSION        = "0.1b"
 	MAX_BATCH_SIZE = 25
 	AWS_KEY_ENV    = "AWS_ACCESS_KEY_ID"
 	AWS_SECRET_ENV = "AWS_SECRET_ACCESS_KEY"
@@ -75,7 +75,7 @@ func init() {
 
 	usage := flag.Usage
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "pql: v%s\n", VERSION)
+		fmt.Fprintf(os.Stderr, "pql: v%s\n", version.VERSION)
 		fmt.Fprintf(os.Stderr, "Parameters: pql [options] [file1 file2 .... fileN]\n")
 		usage()
 	}
