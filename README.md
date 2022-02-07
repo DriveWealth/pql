@@ -66,7 +66,7 @@ pqlquery is a command line utility for executing PartiQL queries against DynamoD
 
 ### Usage
 ```
-pqlquery: v0.3a
+pqlquery: v0.3b
 Usage of pqlquery:
   -consistent
         Specify for consistent reads
@@ -146,7 +146,7 @@ However, depending on the capacity settings and the table's secondary indexes, i
 ### ddbtruncate Usage
 
 ```
-truncate: v0.3a
+truncate: v0.3b
 Usage of ddbtruncate:
   -maxretries int
         The maximum number of retries for a capacity failure (-1 for infinite) (default -1)
