@@ -70,6 +70,8 @@ pqlquery: v0.3a
 Usage of pqlquery:
   -consistent
         Specify for consistent reads
+  -count
+        Specify to retrieve count of matching rows only        
   -maxretries int
         The maximum number of retries for a capacity failure (-1 for infinite) (default -1)
   -minify
