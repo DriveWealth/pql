@@ -36,6 +36,7 @@ var (
 	consistent bool
 	minify     bool
 	nout       bool
+	count      bool
 
 	dbAwsKeyId     string
 	dbAwsSecretKey string
@@ -58,6 +59,7 @@ func init() {
 	flag.BoolVar(&consistent, "consistent", false, "Specify for consistent reads")
 	flag.BoolVar(&minify, "minify", false, "Specify for minified JSON instead of DynamoDB JSON")
 	flag.BoolVar(&nout, "nout", false, "Specify to suppress completion message")
+	flag.BoolVar(&count, "count", false, "Specify to retrieve count of matching rows only")
 	flag.IntVar(&maxRetries, "maxretries", -1, "The maximum number of retries for a capacity failure (-1 for infinite)")
 
 	usage := flag.Usage
@@ -137,13 +139,15 @@ func main() {
 			log.Fatalf("Statement Failure: error=%s\n", err.Error())
 		} else {
 			loops++
-			if loops%10 == 0 {
-				fmt.Fprintf(os.Stderr, "In Process: rows=%d, retries=%d, executions=%d, capacity=%d, elapsed=%s\n",
-					atomic.LoadInt32(rowsRetrieved),
-					retries,
-					loops,
-					atomic.LoadInt64(capUsed),
-					time.Since(startTime).String())
+			if !nout {
+				if loops%10 == 0 {
+					fmt.Fprintf(os.Stderr, "In Process: rows=%d, retries=%d, executions=%d, capacity=%d, elapsed=%s\n",
+						atomic.LoadInt32(rowsRetrieved),
+						retries,
+						loops,
+						atomic.LoadInt64(capUsed),
+						time.Since(startTime).String())
+				}
 			}
 			retries = 0
 			if out.ConsumedCapacity != nil && out.ConsumedCapacity.CapacityUnits != nil {
@@ -152,28 +156,33 @@ func main() {
 			if out.Items != nil {
 				for _, item := range out.Items {
 					atomic.AddInt32(rowsRetrieved, ONE)
-					if minify {
-						minied := ddb.ExtractItem(item)
-						if b, err := json.Marshal(minied); err == nil {
-							fmt.Printf("%s\n", string(b))
-						}
+					if !count {
+						if minify {
+							minied := ddb.ExtractItem(item)
+							if b, err := json.Marshal(minied); err == nil {
+								fmt.Printf("%s\n", string(b))
+							}
 
-					} else {
-						if b, err := json.Marshal(item); err == nil {
-							fmt.Printf("%s\n", string(b))
+						} else {
+							if b, err := json.Marshal(item); err == nil {
+								fmt.Printf("%s\n", string(b))
+							}
 						}
 					}
 				}
 			}
 
 			if out.NextToken == nil {
-				if !nout {
+				if !nout && !count {
 					fmt.Fprintf(os.Stderr, "Complete: rows=%d, retries=%d, executions=%d, capacity=%d, elapsed=%s\n",
 						atomic.LoadInt32(rowsRetrieved),
 						retries,
 						loops,
 						atomic.LoadInt64(capUsed),
 						time.Since(startTime).String())
+				}
+				if count {
+					fmt.Fprintf(os.Stderr, "Count: %d\n", atomic.LoadInt32(rowsRetrieved))
 				}
 				break
 			} else {

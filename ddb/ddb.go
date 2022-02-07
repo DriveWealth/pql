@@ -129,6 +129,21 @@ func FromString(s string) interface{} {
 			}
 			return m
 		}
+	} else if strings.HasPrefix(s, "[") {
+		arr := make([]interface{}, 0, 16)
+		if err := json.Unmarshal([]byte(s), &arr); err != nil {
+			return s
+		} else {
+			for idx, a := range arr {
+				if iface, ok := a.(string); ok {
+					if n, err := ToNumberOrErr(iface); err == nil {
+						arr[idx] = n
+					}
+				}
+			}
+			return arr
+		}
+
 	}
 	if n, err := ToNumberOrErr(s); err != nil {
 		return s
