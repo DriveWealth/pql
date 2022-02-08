@@ -1,6 +1,6 @@
 # PartiQL Command Line Tools for DynamoDB
 
-## High Speed DynamoDB PartiQL Executor
+## pql: High Speed DynamoDB PartiQL Executor
 
 pql is a command line utility to execute DynamoDB [PartiQL](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.html) statements from a provided file.
 
@@ -62,7 +62,7 @@ UPDATE "bo.accounts" SET accountMgmtType = 3 WHERE userID = '9ed1ba94-45ab-47c6-
 * Any pql input file should be limited to only one type of operation (**UPDATE**, **INSERT** or **DELETE**), but will support operations against multiple tables.
 * Tables containing a dot (.) need to be wrapped in double quotes (as seen in the Example PQL File above)
 
-# pqlquery
+## pqlquery: PartiQL SQL Queries for DynamoDB
 pqlquery is a command line utility for executing PartiQL queries against DynamoDB. Results are returned as one line of JSON per row returned.
 
 ### Usage
@@ -139,7 +139,7 @@ The `-minify` option for pqlquery will make a best effort to clean up the JSON o
 }
 ```
 
-# ddbtruncate
+## ddbtruncate: Fast Table Truncation for DynamoDB
 
 When you have a DynamoDB table you want to truncate (delete all the records), it might be easiest to just drop the table and recreate it. 
 However, depending on the capacity settings and the table's secondary indexes, it might be quicker to use **ddbtruncate**.
