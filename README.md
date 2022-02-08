@@ -1,4 +1,5 @@
-# pql
+# PartiQL Command Line Tools for DynamoDB
+
 ## High Speed DynamoDB PartiQL Executor
 
 pql is a command line utility to execute DynamoDB [PartiQL](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ql-reference.html) statements from a provided file.
