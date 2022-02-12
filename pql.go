@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/panjf2000/ants/v2"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"pql/creds"
@@ -84,11 +85,6 @@ func init() {
 	log.Printf("Stats Frequency: %s\n", freq.String())
 	inFiles = flag.Args()
 
-	if len(inFiles) == 0 {
-		fmt.Fprintf(os.Stderr, "ERROR: No input files specified\n")
-		os.Exit(-9)
-	}
-
 	if profile != "" {
 		pcfg, err := creds.GetProfileCreds(profile)
 		if err != nil {
@@ -108,7 +104,38 @@ func init() {
 	pool, _ = ants.NewPool(poolSize, ants.WithPreAlloc(true))
 }
 
+func saveStdIn() string {
+	if f, err := ioutil.TempFile(os.TempDir(), "pql-tmp"); err != nil {
+		//log.Fatalf("Failed to save stdin to file: error=%s\n", err.Error())
+		return "" // not called
+	} else {
+		defer f.Close()
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			s := scanner.Text()
+			f.WriteString(s + "\n")
+		}
+		return f.Name()
+	}
+}
+
 func main() {
+	tmpFile := saveStdIn()
+	if tmpFile != "" {
+		inFiles = append(inFiles, tmpFile)
+		defer os.Remove(tmpFile)
+	}
+	if len(inFiles) == 0 {
+		fmt.Fprintf(os.Stderr, "ERROR: No input files specified\n")
+		os.Exit(-9)
+	}
+
+	//if termutil.Isatty(os.Stdin.Fd()) {
+	//	log.Printf("Reading StdIn\n")
+	//	tmpFile := saveStdIn()
+	//	inFiles = append(inFiles, tmpFile)
+	//	defer os.Remove(tmpFile)
+	//}
 	//defer ants.Release()
 	totalLines, okFiles = evalFiles(inFiles)
 	if okFiles < 1 {

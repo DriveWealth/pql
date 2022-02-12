@@ -27,6 +27,8 @@ const (
 	AWS_KEY_ENV    = "AWS_ACCESS_KEY_ID"
 	AWS_SECRET_ENV = "AWS_SECRET_ACCESS_KEY"
 	AWS_REGION_ENV = "AWS_REGION"
+
+	DEFAULT_MAX_ROWS = -1
 )
 
 var (
@@ -37,6 +39,7 @@ var (
 	minify     bool
 	nout       bool
 	count      bool
+	maxRows    int32
 
 	dbAwsKeyId     string
 	dbAwsSecretKey string
@@ -61,6 +64,8 @@ func init() {
 	flag.BoolVar(&nout, "nout", false, "Specify to suppress completion message")
 	flag.BoolVar(&count, "count", false, "Specify to retrieve count of matching rows only")
 	flag.IntVar(&maxRetries, "maxretries", -1, "The maximum number of retries for a capacity failure (-1 for infinite)")
+	mr := 0
+	flag.IntVar(&mr, "maxrows", DEFAULT_MAX_ROWS, "The maximum number of rows to retrieve (-1 for infinite)")
 
 	usage := flag.Usage
 	flag.Usage = func() {
@@ -68,7 +73,7 @@ func init() {
 		usage()
 	}
 	flag.Parse()
-
+	maxRows = int32(mr)
 	if query == "" {
 		fmt.Fprintf(os.Stderr, "ERROR: No query specified\n")
 		os.Exit(-9)
@@ -107,6 +112,7 @@ func main() {
 	dbClient = dynamodb.NewFromConfig(cfg)
 	retries := 0
 	loops := 0
+	var rowCount int32
 	var nextToken *string = nil
 	startTime := time.Now()
 	for {
@@ -140,7 +146,7 @@ func main() {
 		} else {
 			loops++
 			if !nout {
-				if loops%10 == 0 {
+				if loops%100 == 0 {
 					fmt.Fprintf(os.Stderr, "In Process: rows=%d, retries=%d, executions=%d, capacity=%d, elapsed=%s\n",
 						atomic.LoadInt32(rowsRetrieved),
 						retries,
@@ -155,7 +161,7 @@ func main() {
 			}
 			if out.Items != nil {
 				for _, item := range out.Items {
-					atomic.AddInt32(rowsRetrieved, ONE)
+
 					if !count {
 						if minify {
 							minied := ddb.ExtractItem(item)
@@ -168,6 +174,11 @@ func main() {
 								fmt.Printf("%s\n", string(b))
 							}
 						}
+					}
+					rowCount = atomic.AddInt32(rowsRetrieved, ONE)
+					if maxRows != -1 && rowCount >= maxRows {
+						out.NextToken = nil
+						break
 					}
 				}
 			}

@@ -17,6 +17,7 @@ import (
 	"pql/creds"
 	"pql/util"
 	"pql/version"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -265,8 +266,9 @@ func doDeletes(items []map[string]types.AttributeValue, nested int) int {
 			batchWrite := &dynamodb.BatchWriteItemInput{RequestItems: deleteBatch, ReturnConsumedCapacity: types.ReturnConsumedCapacityTotal}
 			if out, err := dbClient.BatchWriteItem(context.Background(), batchWrite); err != nil {
 				var oe *smithy.OperationError
+				// retry quota exceeded
 				if errors.As(err, &oe) {
-					if _, ok := oe.Err.(*retry.MaxAttemptsError); ok {
+					if _, ok := oe.Err.(*retry.MaxAttemptsError); ok || strings.Contains(oe.Error(), "retry quota exceeded") {
 						total := atomic.AddInt32(retries, ONE)
 						if maxRetries > -1 {
 							if total > int32(maxRetries) {
@@ -276,10 +278,10 @@ func doDeletes(items []map[string]types.AttributeValue, nested int) int {
 						}
 						continue
 					}
-					log.Fatalf("Scan OE Error: %s\n", oe.Error())
+					log.Fatalf("Delete OE Error: %s\n", oe.Error())
 					os.Exit(-1)
 				} else {
-					log.Fatalf("Scan Error: %s\n", err.Error())
+					log.Fatalf("Delete Error: %s\n", err.Error())
 					os.Exit(-1)
 				}
 			} else {
