@@ -151,3 +151,78 @@ func FromString(s string) interface{} {
 		return n
 	}
 }
+
+func ExtractAVToString(av types.AttributeValue) string {
+	switch t := av.(type) {
+	case *types.AttributeValueMemberS:
+		//return FromString(t.Value)
+		return t.Value
+	case *types.AttributeValueMemberN:
+		return t.Value
+		//return ToNumber(t.Value)
+	case *types.AttributeValueMemberB:
+		return string(t.Value)
+		//return t.Value
+	case *types.AttributeValueMemberBOOL:
+		if t.Value {
+			return "true"
+		} else {
+			return "false"
+		}
+		//return t.Value
+	case *types.AttributeValueMemberNULL:
+		return ""
+	case *types.AttributeValueMemberSS:
+		return strings.Join(t.Value, ",")
+		//return t.Value
+	case *types.AttributeValueMemberBS:
+		size := len(t.Value)
+		arr := make([]string, size, size)
+		for idx := 0; idx < size; idx++ {
+			arr[idx] = string(t.Value[idx])
+		}
+		return strings.Join(arr, ",")
+	case *types.AttributeValueMemberNS:
+		return strings.Join(t.Value, ",")
+	case *types.AttributeValueMemberL:
+		size := len(t.Value)
+		arr := make([]string, size, size)
+		for idx := 0; idx < size; idx++ {
+			arr[idx] = ExtractAVToString(t.Value[idx])
+		}
+		return strings.Join(arr, ",")
+	case *types.AttributeValueMemberM:
+		size := len(t.Value)
+		last := size - 1
+		var b strings.Builder
+		b.WriteString("{")
+		idx := 0
+		for k, v := range t.Value {
+			b.WriteString(k)
+			b.WriteString(":")
+			b.WriteString(ExtractAVToString(v))
+			if idx < last {
+				b.WriteString(", ")
+			}
+			idx++
+		}
+		b.WriteString("}")
+		return b.String()
+	}
+	return ""
+}
+
+func AVMapToStrStrMap(item map[string]types.AttributeValue) map[string]string {
+	m := make(map[string]string, len(item))
+	for k, v := range item {
+		m[k] = ExtractAVToString(v)
+	}
+	return m
+}
+func AVMapToString(item map[string]types.AttributeValue) string {
+	if b, err := json.Marshal(item); err != nil {
+		return "ERROR: " + err.Error()
+	} else {
+		return string(b)
+	}
+}

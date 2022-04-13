@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
@@ -12,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/smithy-go"
+	"io/ioutil"
 	"log"
 	"os"
 	"pql/creds"
@@ -20,6 +22,7 @@ import (
 	"pql/version"
 	"strings"
 	"sync/atomic"
+	"text/template"
 	"time"
 )
 
@@ -32,14 +35,16 @@ const (
 )
 
 var (
-	maxRetries int
-	profile    string
-	query      string
-	consistent bool
-	minify     bool
-	nout       bool
-	count      bool
-	maxRows    int32
+	maxRetries   int
+	profile      string
+	query        string
+	consistent   bool
+	minify       bool
+	nout         bool
+	count        bool
+	maxRows      int32
+	templateName string
+	tmplt        *template.Template
 
 	dbAwsKeyId     string
 	dbAwsSecretKey string
@@ -59,6 +64,7 @@ func init() {
 
 	flag.StringVar(&profile, "profile", "", "The optional AWS shared config credential profile name")
 	flag.StringVar(&query, "query", "", "The PartiSQL statement to execute")
+	flag.StringVar(&templateName, "template", "", "The name of a query template file to generate pql statements with, or just the content")
 	flag.BoolVar(&consistent, "consistent", false, "Specify for consistent reads")
 	flag.BoolVar(&minify, "minify", false, "Specify for minified JSON instead of DynamoDB JSON")
 	flag.BoolVar(&nout, "nout", false, "Specify to suppress completion message")
@@ -93,6 +99,14 @@ func init() {
 		dbAwsKeyId = util.Env("", AWS_KEY_ENV)
 		dbAwsSecretKey = util.Env("", AWS_SECRET_ENV)
 		dbAwsRegion = util.Env("us-east-1", AWS_REGION_ENV)
+	}
+	if templateName != "" {
+		if t, err := loadTemplate(templateName); err != nil {
+			fmt.Printf("ERROR: Failed to load template: file=[%s], error=%s\n", templateName, err.Error())
+			os.Exit(-10)
+		} else {
+			tmplt = t
+		}
 	}
 }
 
@@ -161,10 +175,23 @@ func main() {
 			}
 			if out.Items != nil {
 				for _, item := range out.Items {
-
+					if tmplt != nil {
+						payload := ddb.ExtractItem(item)
+						if err := tmplt.Execute(os.Stdout, payload); err != nil {
+							fmt.Printf("ERROR: Failed to execute template: file=[%s], error=%s\n", templateName, err.Error())
+							os.Exit(-10)
+						}
+						rowCount = atomic.AddInt32(rowsRetrieved, ONE)
+						if maxRows != -1 && rowCount >= maxRows {
+							out.NextToken = nil
+							break
+						}
+						continue
+					}
 					if !count {
 						if minify {
 							minied := ddb.ExtractItem(item)
+
 							if b, err := json.Marshal(minied); err == nil {
 								fmt.Printf("%s\n", string(b))
 							}
@@ -206,4 +233,22 @@ func main() {
 func stdOutFileName() string {
 	stat, _ := os.Stdout.Stat()
 	return stat.Name()
+}
+
+func loadTemplate(fileName string) (*template.Template, error) {
+	if f, err := os.Open(fileName); err != nil {
+		return nil, errors.New("Failed to open template file: file=" + fileName + ", error=" + err.Error())
+	} else {
+		defer f.Close()
+		if bytes, err := ioutil.ReadAll(f); err != nil {
+			return nil, errors.New("Failed to read template file: file=" + fileName + ", error=" + err.Error())
+		} else {
+			if t, err := template.New(f.Name()).Parse(string(bytes)); err != nil {
+				return nil, errors.New("Failed to parse template file: file=" + fileName + ", error=" + err.Error())
+			} else {
+				return t, nil
+			}
+		}
+	}
+
 }

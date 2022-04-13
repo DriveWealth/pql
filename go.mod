@@ -10,5 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.13.0 // indirect
 	github.com/aws/smithy-go v1.10.0 // indirect
 	github.com/bcicen/jstream v1.0.1 // indirect
+	github.com/bxcodec/faker/v3 v3.7.0 // indirect
+	github.com/jaswdr/faker v1.10.2 // indirect
 	github.com/panjf2000/ants/v2 v2.4.7 // indirect
 )

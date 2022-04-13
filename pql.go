@@ -6,6 +6,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/andrew-d/go-termutil"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/credentials/ec2rolecreds"
@@ -14,8 +15,11 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"os"
 	"pql/creds"
+	"pql/pqlfaker"
+	"pql/refsequence"
 	"pql/util"
 	"pql/version"
 	"runtime"
@@ -36,13 +40,15 @@ const (
 )
 
 var (
-	poolSize   int
-	statsFreq  int
-	maxRetries int
-	profile    string
-	inFiles    []string
-	pool       *ants.Pool
-	freq       time.Duration
+	enableFaker bool
+	noExec      bool
+	poolSize    int
+	statsFreq   int
+	maxRetries  int
+	profile     string
+	inFiles     []string
+	pool        *ants.Pool
+	freq        time.Duration
 
 	totalLines int
 	okFiles    int
@@ -61,18 +67,22 @@ var (
 
 	dbClient *dynamodb.Client
 
+	faker *pqlfaker.Faker
+
 	ONE       = int32(1)
 	MINUS_ONE = int32(-1)
 )
 
 func init() {
-
+	rand.Seed(time.Now().UnixNano())
 	cores := runtime.NumCPU()
 	runtime.GOMAXPROCS(cores)
 	flag.IntVar(&poolSize, "pool", cores*10, "The size of the thread pool for executing PartiQL batches")
 	flag.IntVar(&statsFreq, "stats", 10, "The period on which stats are printed in seconds")
 	flag.StringVar(&profile, "profile", "", "The optional AWS shared config credential profile name")
 	flag.IntVar(&maxRetries, "maxretries", -1, "The maximum number of retries for a failed batch write (-1 for infinite)")
+	flag.BoolVar(&enableFaker, "faker", false, "Specify to enable faker test data generation and token substitution")
+	flag.BoolVar(&noExec, "noexec", false, "Specify to disable statement execution, but just output the statements as a dry run")
 
 	usage := flag.Usage
 	flag.Usage = func() {
@@ -105,6 +115,9 @@ func init() {
 }
 
 func saveStdIn() string {
+	if termutil.Isatty(os.Stdin.Fd()) {
+		return ""
+	}
 	if f, err := ioutil.TempFile(os.TempDir(), "pql-tmp"); err != nil {
 		//log.Fatalf("Failed to save stdin to file: error=%s\n", err.Error())
 		return "" // not called
@@ -117,6 +130,21 @@ func saveStdIn() string {
 		}
 		return f.Name()
 	}
+}
+
+func getRefSequence() {
+	// "accountNo", "ZA", count, false
+	rs, _ := refsequence.NewRefSequence(dbClient)
+	//if seqs, err := rs.GetRefSequences("accountNo", "ZRDA", 3, false); err != nil {
+	//if seqs, err := rs.GetRefSequencesWithWLP("orderNo", "ZRDA", 3, false); err != nil {
+	if seqs, err := rs.GetRefSequences("orderNo", 300); err != nil {
+		log.Printf("Failed to get ref-sequences: error=%s\n", err.Error())
+	} else {
+		for idx, seq := range seqs {
+			log.Printf("%d: %s (%d)\n", idx, seq, len(seq))
+		}
+	}
+	os.Exit(1)
 }
 
 func main() {
@@ -165,6 +193,15 @@ func main() {
 	// Using the Config value, create the DynamoDB client
 	dbClient = dynamodb.NewFromConfig(cfg)
 
+	if enableFaker {
+		if f, err := pqlfaker.NewFaker(dbClient); err != nil {
+			fmt.Fprintf(os.Stderr, "ERROR: Failed to initialize Faker: error=%s\n", err.Error())
+			os.Exit(-9)
+		} else {
+			faker = f
+		}
+	}
+
 	var globalWg sync.WaitGroup
 	globalWg.Add(okFiles)
 	startTime := time.Now()
@@ -202,20 +239,29 @@ func processFile(fileName string, globalWg *sync.WaitGroup) {
 		if len(st) == 0 {
 			continue
 		}
-		req := types.BatchStatementRequest{
-			Statement: aws.String(st),
+		if strings.HasPrefix(st, "#") {
+			continue
 		}
-		arr = append(arr, req)
-		currentBatchSize++
-		if len(arr) == MAX_BATCH_SIZE {
+
+		doBreak := strings.ToLower(strings.TrimSpace(st)) == "break"
+		if !doBreak {
+			req := types.BatchStatementRequest{
+				Statement: aws.String(st),
+			}
+			arr = append(arr, req)
+			currentBatchSize++
+		}
+		if doBreak || len(arr) == MAX_BATCH_SIZE {
 			currentBatchSize = 0
 			arrCopy := arr
 			arr = make([]types.BatchStatementRequest, 0, MAX_BATCH_SIZE)
-			fileWg.Add(1)
-			pool.Submit(func() { // FIXME: handle possible pool failure
-				defer fileWg.Done()
-				submitBatch(arrCopy)
-			})
+			if len(arrCopy) > 0 {
+				fileWg.Add(1)
+				pool.Submit(func() { // FIXME: handle possible pool failure
+					defer fileWg.Done()
+					submitBatch(arrCopy)
+				})
+			}
 		}
 	}
 	if currentBatchSize > 0 {
@@ -277,7 +323,18 @@ func submitBatch(arrCopy []types.BatchStatementRequest) {
 
 func executeBatch(client *dynamodb.Client, commands []types.BatchStatementRequest) (capFailedCommands []types.BatchStatementRequest, err error) {
 	failedArr := make([]types.BatchStatementRequest, 0)
+	if enableFaker {
+		for idx, cmd := range commands {
+			v := faker.Substitute(cmd.Statement)
+			cmd.Statement = v
+			fmt.Printf("%s\n", *v)
+			commands[idx] = cmd
 
+		}
+		if noExec {
+			return nil, nil
+		}
+	}
 	var totalCap = int64(0)
 	if out, batchErr := client.BatchExecuteStatement(context.TODO(), &dynamodb.BatchExecuteStatementInput{
 		Statements:             commands,
@@ -317,14 +374,20 @@ func closeFile(file *os.File) {
 }
 
 func reportStats(final bool) {
-	if final {
-		log.Printf("Final Status: rowsprocessed=%d, batches=%d, failed=%d, retries=%d, cap=%d, poolbusy=%d, inflight=%d\n",
-			atomic.LoadInt32(executed), atomic.LoadInt32(executedBatches), atomic.LoadInt32(rowsFailed), atomic.LoadInt32(retries), atomic.LoadInt64(capUsed), pool.Running(), atomic.LoadInt32(inFlight),
-		)
+	if noExec {
+		if final {
+			log.Printf("No statement executed (-noexec was enabled)")
+		}
 	} else {
-		log.Printf("Progress: rowsprocessed=%d, batches=%d, failed=%d, retries=%d, cap=%d, poolbusy=%d, inflight=%d\n",
-			atomic.LoadInt32(executed), atomic.LoadInt32(executedBatches), atomic.LoadInt32(rowsFailed), atomic.LoadInt32(retries), atomic.LoadInt64(capUsed), pool.Running(), atomic.LoadInt32(inFlight),
-		)
+		if final {
+			log.Printf("Final Status: rowsprocessed=%d, batches=%d, failed=%d, retries=%d, cap=%d, poolbusy=%d, inflight=%d\n",
+				atomic.LoadInt32(executed), atomic.LoadInt32(executedBatches), atomic.LoadInt32(rowsFailed), atomic.LoadInt32(retries), atomic.LoadInt64(capUsed), pool.Running(), atomic.LoadInt32(inFlight),
+			)
+		} else {
+			log.Printf("Progress: rowsprocessed=%d, batches=%d, failed=%d, retries=%d, cap=%d, poolbusy=%d, inflight=%d\n",
+				atomic.LoadInt32(executed), atomic.LoadInt32(executedBatches), atomic.LoadInt32(rowsFailed), atomic.LoadInt32(retries), atomic.LoadInt64(capUsed), pool.Running(), atomic.LoadInt32(inFlight),
+			)
+		}
 	}
 }
 
