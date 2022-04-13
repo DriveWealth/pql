@@ -7,7 +7,7 @@ pql is a command line utility to execute DynamoDB [PartiQL](https://docs.aws.ama
 PartiQL is a SQL-compatible query language, to select, insert, update, and delete data in Amazon DynamoDB. 
 
 ### Downloads
-Binaries can be downloaded [here](https://github.com/DriveWealth/pql/releases/tag/v0.2a).
+Binaries can be downloaded [here](https://github.com/DriveWealth/pql/releases/tag/v0.5a).
 
 ### Usage
 
